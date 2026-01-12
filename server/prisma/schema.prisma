@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      String   // EMPLOYEE or ADMIN
+  entraId   String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timeEntries       TimeEntry[]
+  vacationRequests  VacationRequest[]
+  questions         Question[]
+  reviewedTimeEntries TimeEntry[] @relation("ReviewedTimeEntries")
+  reviewedVacations VacationRequest[] @relation("ReviewedVacations")
+  answeredQuestions Question[] @relation("AnsweredQuestions")
+}
+
+model TimeEntry {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  date        DateTime
+  hoursWorked Float
+  description String
+  status      String   // DRAFT, SUBMITTED, APPROVED, REJECTED
+  reviewedBy  String?
+  reviewer    User?    @relation("ReviewedTimeEntries", fields: [reviewedBy], references: [id])
+  reviewedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model VacationRequest {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  startDate  DateTime
+  endDate    DateTime
+  reason     String
+  status     String   // PENDING, APPROVED, REJECTED
+  reviewedBy String?
+  reviewer   User?    @relation("ReviewedVacations", fields: [reviewedBy], references: [id])
+  reviewedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Question {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  question   String
+  answer     String?
+  answeredBy String?
+  answerer   User?    @relation("AnsweredQuestions", fields: [answeredBy], references: [id])
+  answeredAt DateTime?
+  status     String   // OPEN, ANSWERED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
