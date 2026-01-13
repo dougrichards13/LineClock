@@ -20,19 +20,27 @@ api.interceptors.request.use((config) => {
 
 // Auth
 export const authAPI = {
-  loginEmployee: (email: string, name: string) =>
-    api.post('/auth/login/employee', { email, name }),
-  loginAdminTest: (email: string) =>
-    api.post('/auth/login/admin-test', { email }),
-  getAdminAuthUrl: () => api.get('/auth/login/admin'),
+  getAuthUrl: () => api.get('/auth/login'),
   handleCallback: (code: string) => api.post('/auth/callback', { code }),
+  getProfile: () => api.get('/auth/profile'),
+  updateProfile: (data: { name: string; avatarUrl?: string; hireDate?: string }) => 
+    api.patch('/auth/profile', data),
+  // Admin only
+  getEntraUsers: () => api.get('/auth/entra/users'),
+  updateUserRole: (userId: string, role: string) =>
+    api.patch(`/auth/users/${userId}/role`, { role }),
+  toggleUserHidden: (userId: string, isHidden: boolean) =>
+    api.patch(`/auth/users/${userId}/hidden`, { isHidden }),
+  preHideUser: (entraId: string, email: string, name: string, role?: string, isHidden?: boolean) =>
+    api.post('/auth/users/pre-hide', { entraId, email, name, role, isHidden }),
+  deleteUser: (userId: string) => api.delete(`/auth/users/${userId}`),
 };
 
 // Time Entries
 export const timeEntriesAPI = {
   getAll: () => api.get('/time-entries'),
   getOne: (id: string) => api.get(`/time-entries/${id}`),
-  create: (data: { date: string; hoursWorked: number; description: string }) =>
+  create: (data: { date: string; hoursWorked: number; clientId: string; projectId: string; description?: string }) =>
     api.post('/time-entries', data),
   update: (id: string, data: any) => api.put(`/time-entries/${id}`, data),
   delete: (id: string) => api.delete(`/time-entries/${id}`),
@@ -65,6 +73,41 @@ export const questionsAPI = {
 // Dashboard
 export const dashboardAPI = {
   getStats: () => api.get('/dashboard/stats'),
+};
+
+// Clients
+export const clientsAPI = {
+  getAll: () => api.get('/clients'),
+  getOne: (id: string) => api.get(`/clients/${id}`),
+  create: (name: string) => api.post('/clients', { name }),
+  update: (id: string, data: { name?: string; isActive?: boolean }) =>
+    api.put(`/clients/${id}`, data),
+  delete: (id: string) => api.delete(`/clients/${id}`),
+};
+
+// Projects
+export const projectsAPI = {
+  getAll: () => api.get('/projects'),
+  getByClient: (clientId: string) => api.get(`/projects/client/${clientId}`),
+  create: (name: string, clientId: string) =>
+    api.post('/projects', { name, clientId }),
+  update: (id: string, data: { name?: string; isActive?: boolean }) =>
+    api.put(`/projects/${id}`, data),
+  delete: (id: string) => api.delete(`/projects/${id}`),
+};
+
+// User Assignments
+export const assignmentsAPI = {
+  getUsers: () => api.get('/assignments/users'),
+  getUserAssignments: (userId: string) => api.get(`/assignments/user/${userId}`),
+  assignClient: (userId: string, clientId: string) =>
+    api.post('/assignments/assign-client', { userId, clientId }),
+  removeClient: (userId: string, clientId: string) =>
+    api.delete(`/assignments/assign-client/${userId}/${clientId}`),
+  assignProject: (userId: string, projectId: string) =>
+    api.post('/assignments/assign-project', { userId, projectId }),
+  removeProject: (userId: string, projectId: string) =>
+    api.delete(`/assignments/assign-project/${userId}/${projectId}`),
 };
 
 export default api;

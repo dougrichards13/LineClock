@@ -6,6 +6,9 @@ import timeEntriesRoutes from './routes/timeEntries';
 import vacationsRoutes from './routes/vacations';
 import questionsRoutes from './routes/questions';
 import dashboardRoutes from './routes/dashboard';
+import clientsRoutes from './routes/clients';
+import projectsRoutes from './routes/projects';
+import userAssignmentsRoutes from './routes/userAssignments';
 
 dotenv.config();
 
@@ -36,6 +39,9 @@ app.use('/api/time-entries', timeEntriesRoutes);
 app.use('/api/vacations', vacationsRoutes);
 app.use('/api/questions', questionsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/clients', clientsRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/assignments', userAssignmentsRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

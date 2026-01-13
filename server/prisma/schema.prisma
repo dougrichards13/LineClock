@@ -16,6 +16,9 @@ model User {
   name      String
   role      String   // EMPLOYEE or ADMIN
   entraId   String?  @unique
+  avatarUrl String?  // Avatar image URL or emoji
+  hireDate  DateTime? // When they joined the company
+  isHidden  Boolean  @default(false) // Hide from user lists (e.g., distribution lists)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,15 +28,49 @@ model User {
   reviewedTimeEntries TimeEntry[] @relation("ReviewedTimeEntries")
   reviewedVacations VacationRequest[] @relation("ReviewedVacations")
   answeredQuestions Question[] @relation("AnsweredQuestions")
+  assignedClients   UserClient[]
+  assignedProjects  UserProject[]
+}
+
+model Client {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  projects    Project[]
+  timeEntries TimeEntry[]
+  assignedUsers UserClient[]
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  name        String
+  clientId    String
+  client      Client    @relation(fields: [clientId], references: [id])
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  timeEntries TimeEntry[]
+  assignedUsers UserProject[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
 }
 
 model TimeEntry {
   id          String   @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id])
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
   date        DateTime
   hoursWorked Float
-  description String
+  description String?  // Made optional - task notes
   status      String   // DRAFT, SUBMITTED, APPROVED, REJECTED
   reviewedBy  String?
   reviewer    User?    @relation("ReviewedTimeEntries", fields: [reviewedBy], references: [id])
@@ -43,12 +80,14 @@ model TimeEntry {
 
   @@index([userId])
   @@index([status])
+  @@index([clientId])
+  @@index([projectId])
 }
 
 model VacationRequest {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   startDate  DateTime
   endDate    DateTime
   reason     String
@@ -66,7 +105,7 @@ model VacationRequest {
 model Question {
   id         String   @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   question   String
   answer     String?
   answeredBy String?
@@ -78,4 +117,30 @@ model Question {
 
   @@index([userId])
   @@index([status])
+}
+
+model UserClient {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, clientId])
+  @@index([userId])
+  @@index([clientId])
+}
+
+model UserProject {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
 }

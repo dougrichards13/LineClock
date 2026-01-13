@@ -13,9 +13,9 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       where: { userId },
       orderBy: { date: 'desc' },
       include: {
-        reviewer: {
-          select: { name: true, email: true },
-        },
+        client: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
+        reviewer: { select: { name: true, email: true } },
       },
     });
 
@@ -62,10 +62,10 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 // Create time entry
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { date, hoursWorked, description } = req.body;
+    const { date, hoursWorked, description, clientId, projectId } = req.body;
     const userId = req.user!.userId;
 
-    if (!date || !hoursWorked || !description) {
+    if (!date || !hoursWorked || !clientId || !projectId) {
       res.status(400).json({ success: false, error: 'Missing required fields' });
       return;
     }
@@ -73,10 +73,16 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const entry = await prisma.timeEntry.create({
       data: {
         userId,
+        clientId,
+        projectId,
         date: new Date(date),
         hoursWorked: parseFloat(hoursWorked),
-        description,
+        description: description || null,
         status: 'DRAFT',
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
       },
     });
 
@@ -91,7 +97,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { date, hoursWorked, description, status } = req.body;
+    const { date, hoursWorked, description, status, clientId, projectId } = req.body;
     const userId = req.user!.userId;
 
     const existing = await prisma.timeEntry.findUnique({ where: { id } });
@@ -115,12 +121,18 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const updateData: any = {};
     if (date) updateData.date = new Date(date);
     if (hoursWorked) updateData.hoursWorked = parseFloat(hoursWorked);
-    if (description) updateData.description = description;
+    if (description !== undefined) updateData.description = description || null;
     if (status) updateData.status = status;
+    if (clientId) updateData.clientId = clientId;
+    if (projectId) updateData.projectId = projectId;
 
     const entry = await prisma.timeEntry.update({
       where: { id },
       data: updateData,
+      include: {
+        client: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
+      },
     });
 
     res.json({ success: true, data: entry });
@@ -170,6 +182,8 @@ router.get('/admin/pending', authMiddleware, adminOnly, async (req: AuthRequest,
       orderBy: { date: 'desc' },
       include: {
         user: { select: { id: true, name: true, email: true } },
+        client: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
       },
     });
 
