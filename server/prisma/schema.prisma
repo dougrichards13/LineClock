@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql" // Changed from sqlite for production
   url      = env("DATABASE_URL")
 }
 
@@ -19,6 +19,9 @@ model User {
   avatarUrl String?  // Avatar image URL or emoji
   hireDate  DateTime? // When they joined the company
   isHidden  Boolean  @default(false) // Hide from user lists (e.g., distribution lists)
+  phoneNumber String? // For SMS notifications
+  notificationPreference String @default("EMAIL") // EMAIL, SMS, BOTH
+  billableRate Float?  // Consultant's hourly rate (for 1099 reporting)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -30,6 +33,15 @@ model User {
   answeredQuestions Question[] @relation("AnsweredQuestions")
   assignedClients   UserClient[]
   assignedProjects  UserProject[]
+  notificationsSent NotificationLog[]
+  timesheetTemplates TimesheetTemplate[]
+  overtimeRequests  OvertimeRequest[]
+  reviewedOvertimeRequests OvertimeRequest[] @relation("ReviewedOvertimeRequests")
+  
+  // Fractional Incentive Program
+  fractionalIncentivesAsLeader FractionalIncentive[] @relation("FIPLeader")
+  fractionalIncentivesAsConsultant FractionalIncentive[] @relation("FIPConsultant")
+  incentiveEarnings IncentiveEarning[]
 }
 
 model Client {
@@ -42,6 +54,8 @@ model Client {
   projects    Project[]
   timeEntries TimeEntry[]
   assignedUsers UserClient[]
+  billComMapping BillComCustomerMapping?
+  invoices    Invoice[]
 }
 
 model Project {
@@ -50,11 +64,13 @@ model Project {
   clientId    String
   client      Client    @relation(fields: [clientId], references: [id])
   isActive    Boolean   @default(true)
+  billingRate Float?    // Client's hourly rate (for invoicing)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   timeEntries TimeEntry[]
   assignedUsers UserProject[]
+  fractionalIncentives FractionalIncentive[]
 
   @@unique([clientId, name])
   @@index([clientId])
@@ -75,8 +91,19 @@ model TimeEntry {
   reviewedBy  String?
   reviewer    User?    @relation("ReviewedTimeEntries", fields: [reviewedBy], references: [id])
   reviewedAt  DateTime?
+  
+  // Financial tracking
+  consultantRate   Float?  // Rate paid to consultant (for 1099)
+  clientRate       Float?  // Rate charged to client (for invoicing)
+  consultantAmount Float?  // consultantRate × hours
+  clientAmount     Float?  // clientRate × hours
+  smartFactoryMargin Float? // clientAmount - consultantAmount - total incentives
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  invoiceLineItems InvoiceLineItem[]
+  incentiveEarnings IncentiveEarning[]
 
   @@index([userId])
   @@index([status])
@@ -143,4 +170,213 @@ model UserProject {
   @@unique([userId, projectId])
   @@index([userId])
   @@index([projectId])
+}
+
+// Bill.com Integration
+model BillComConfig {
+  id            String   @id @default(uuid())
+  devKey        String   // Encrypted
+  username      String   // Encrypted
+  password      String   // Encrypted
+  organizationId String  // Encrypted
+  environment   String   @default("SANDBOX") // SANDBOX or PRODUCTION
+  sessionId     String?  // Current session token
+  sessionExpiry DateTime? // Session expiration time
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model BillComCustomerMapping {
+  id               String   @id @default(uuid())
+  clientId         String   @unique
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  billComCustomerId String  // Bill.com customer ID
+  billComCustomerName String? // Cache customer name
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([billComCustomerId])
+}
+
+model InvoiceBatch {
+  id           String   @id @default(uuid())
+  startDate    DateTime // Period start
+  endDate      DateTime // Period end
+  status       String   @default("DRAFT") // DRAFT, PENDING_REVIEW, APPROVED, SUBMITTED, COMPLETED, FAILED
+  generatedBy  String?  // Admin who generated
+  generatedAt  DateTime @default(now())
+  submittedAt  DateTime? // When submitted to Bill.com
+  completedAt  DateTime? // When all invoices processed
+  notes        String?  // Admin notes
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  invoices     Invoice[]
+
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model Invoice {
+  id                String   @id @default(uuid())
+  batchId           String?
+  batch             InvoiceBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id])
+  billComInvoiceId  String?  @unique // Bill.com invoice ID after submission
+  invoiceNumber     String?  // Generated invoice number
+  status            String   @default("DRAFT") // DRAFT, PENDING_REVIEW, APPROVED, SUBMITTED, SENT, VIEWED, PAID, FAILED
+  totalHours        Float    @default(0)
+  totalAmount       Float?   // Calculated by Bill.com (we don't know rates)
+  dueDate           DateTime?
+  submittedAt       DateTime?
+  failureReason     String?  // Error message if failed
+  notes             String?  // Admin notes
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  lineItems         InvoiceLineItem[]
+
+  @@index([batchId])
+  @@index([clientId])
+  @@index([status])
+  @@index([billComInvoiceId])
+}
+
+model InvoiceLineItem {
+  id           String   @id @default(uuid())
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  timeEntryId  String?  // Link to original time entry
+  timeEntry    TimeEntry? @relation(fields: [timeEntryId], references: [id], onDelete: SetNull)
+  employeeName String   // Cache employee name
+  projectName  String   // Cache project name
+  description  String   // "Employee Name - Project Name - X hours"
+  hours        Float
+  rate         Float?   // Pulled from Bill.com after submission
+  amount       Float?   // hours * rate (calculated by Bill.com)
+  date         DateTime // Date of work
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([timeEntryId])
+}
+
+model NotificationLog {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String   // OVERDUE_TIME, INVOICE_READY, INVOICE_FAILED, etc.
+  method       String   // EMAIL, SMS
+  recipient    String   // Email or phone number
+  subject      String?  // For emails
+  message      String   // Notification content
+  status       String   @default("PENDING") // PENDING, SENT, FAILED
+  sentAt       DateTime?
+  failureReason String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Timesheet Templates for saving/reusing weekly time entries
+model TimesheetTemplate {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "Standard Week", "Project X Week"
+  isDefault   Boolean  @default(false) // If true, auto-applies to new weeks
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  entries     TimesheetTemplateEntry[]
+
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+model TimesheetTemplateEntry {
+  id          String   @id @default(uuid())
+  templateId  String
+  template    TimesheetTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int      // 0=Sunday, 1=Monday, ..., 6=Saturday
+  clientId    String
+  projectId   String
+  hoursWorked Float
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([templateId])
+}
+
+// Overtime Request for hours exceeding 40/week
+model OvertimeRequest {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate DateTime // Monday of the week
+  requestedHours Float  // How many overtime hours
+  reason      String   // Why overtime is needed
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedBy  String?
+  reviewer    User?    @relation("ReviewedOvertimeRequests", fields: [reviewedBy], references: [id])
+  reviewedAt  DateTime?
+  reviewNotes String?  // Admin notes on approval/rejection
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([weekStartDate])
+}
+
+// Fractional Incentive Program (FIP)
+// Tracks which leaders earn incentives from which consultants' work
+model FractionalIncentive {
+  id             String    @id @default(uuid())
+  leaderId       String    // The leader/FE earning the incentive
+  leader         User      @relation("FIPLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  consultantId   String    // The consultant whose work generates incentive
+  consultant     User      @relation("FIPConsultant", fields: [consultantId], references: [id], onDelete: Cascade)
+  projectId      String?   // Optional: limit to specific project
+  project        Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  incentiveRate  Float     // $/hour earned by leader per consultant hour
+  startDate      DateTime  // When this FIP assignment starts
+  endDate        DateTime? // When it ends (null = ongoing)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  incentiveEarnings IncentiveEarning[]
+  
+  @@unique([leaderId, consultantId, projectId])
+  @@index([leaderId])
+  @@index([consultantId])
+  @@index([projectId])
+  @@index([isActive])
+}
+
+// Actual incentive earnings per time entry
+model IncentiveEarning {
+  id                    String              @id @default(uuid())
+  timeEntryId           String
+  timeEntry             TimeEntry           @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  leaderId              String
+  leader                User                @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  fractionalIncentiveId String
+  fractionalIncentive   FractionalIncentive @relation(fields: [fractionalIncentiveId], references: [id], onDelete: Cascade)
+  incentiveRate         Float               // $/hour (captured at time of entry)
+  incentiveAmount       Float               // incentiveRate × timeEntry.hours
+  createdAt             DateTime            @default(now())
+  
+  @@index([timeEntryId])
+  @@index([leaderId])
+  @@index([fractionalIncentiveId])
 }

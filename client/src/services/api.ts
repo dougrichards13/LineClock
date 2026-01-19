@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -23,7 +23,7 @@ export const authAPI = {
   getAuthUrl: () => api.get('/auth/login'),
   handleCallback: (code: string) => api.post('/auth/callback', { code }),
   getProfile: () => api.get('/auth/profile'),
-  updateProfile: (data: { name: string; avatarUrl?: string; hireDate?: string }) => 
+  updateProfile: (data: { name: string; avatarUrl?: string; hireDate?: string; billableRate?: number }) => 
     api.patch('/auth/profile', data),
   // Admin only
   getEntraUsers: () => api.get('/auth/entra/users'),
@@ -89,9 +89,9 @@ export const clientsAPI = {
 export const projectsAPI = {
   getAll: () => api.get('/projects'),
   getByClient: (clientId: string) => api.get(`/projects/client/${clientId}`),
-  create: (name: string, clientId: string) =>
-    api.post('/projects', { name, clientId }),
-  update: (id: string, data: { name?: string; isActive?: boolean }) =>
+  create: (name: string, clientId: string, billingRate?: number) =>
+    api.post('/projects', { name, clientId, billingRate }),
+  update: (id: string, data: { name?: string; isActive?: boolean; billingRate?: number }) =>
     api.put(`/projects/${id}`, data),
   delete: (id: string) => api.delete(`/projects/${id}`),
 };

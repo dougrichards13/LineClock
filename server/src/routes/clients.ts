@@ -28,7 +28,6 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         where: { userId },
         include: {
           client: {
-            where: { isActive: true },
             include: {
               _count: {
                 select: { projects: true, timeEntries: true },
@@ -37,7 +36,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
           },
         },
       });
-      clients = assignments.map(a => a.client).filter(c => c !== null);
+      clients = assignments.map(a => a.client).filter(c => c !== null && c.isActive);
     }
 
     res.json({ success: true, data: clients });

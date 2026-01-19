@@ -10,6 +10,7 @@ const Profile: React.FC = () => {
   const [name, setName] = useState(contextUser?.name || '');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [hireDate, setHireDate] = useState('');
+  const [billableRate, setBillableRate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -29,6 +30,7 @@ const Profile: React.FC = () => {
       setName(user.name);
       setAvatarUrl(user.avatarUrl || '');
       setHireDate(user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : '');
+      setBillableRate(user.billableRate ? user.billableRate.toString() : '');
     } catch (err: any) {
       console.error('Failed to load profile:', err);
     }
@@ -43,7 +45,8 @@ const Profile: React.FC = () => {
       const response = await authAPI.updateProfile({ 
         name, 
         avatarUrl: avatarUrl || undefined,
-        hireDate: hireDate || undefined 
+        hireDate: hireDate || undefined,
+        billableRate: billableRate ? parseFloat(billableRate) : undefined 
       });
       const updatedUser = response.data.data.user;
       
@@ -68,6 +71,7 @@ const Profile: React.FC = () => {
     setName(profileData?.name || contextUser?.name || '');
     setAvatarUrl(profileData?.avatarUrl || '');
     setHireDate(profileData?.hireDate ? new Date(profileData.hireDate).toISOString().split('T')[0] : '');
+    setBillableRate(profileData?.billableRate ? profileData.billableRate.toString() : '');
     setIsEditing(false);
     setShowEmojiPicker(false);
     setError('');
@@ -197,15 +201,15 @@ const Profile: React.FC = () => {
   const timeWithCompany = getTimeWithCompany();
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 p-8 rounded-xl shadow-lg">
+    <div className="bg-slate-800/90 backdrop-blur p-8 rounded-xl shadow-lg border border-slate-600">
       {error && (
-        <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+        <div className="mb-4 text-sm text-red-300 bg-red-900/30 p-3 rounded-lg border border-red-500/30">
           {error}
         </div>
       )}
       
       {success && (
-        <div className="mb-4 text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">
+        <div className="mb-4 text-sm text-emerald-300 bg-emerald-900/30 p-3 rounded-lg border border-emerald-500/30">
           {success}
         </div>
       )}
@@ -213,7 +217,7 @@ const Profile: React.FC = () => {
       <div className="flex items-start gap-6 mb-8">
         {/* Avatar Section */}
         <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-4xl text-white shadow-lg overflow-hidden">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-4xl text-white shadow-lg overflow-hidden">
             {isImageUrl(getDisplayAvatar()) ? (
               <img 
                 src={getDisplayAvatar()} 
@@ -227,19 +231,19 @@ const Profile: React.FC = () => {
           {isEditing && (
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="absolute -bottom-2 -right-2 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow border-2 border-gray-100"
+              className="absolute -bottom-2 -right-2 bg-slate-700 rounded-full p-2 shadow-md hover:shadow-lg transition-shadow border-2 border-slate-600"
               disabled={uploadingImage}
             >
               {uploadingImage ? '⏳' : '✏️'}
             </button>
           )}
           {showEmojiPicker && (
-            <div className="absolute top-0 left-28 bg-white rounded-lg shadow-xl p-4 border border-gray-200 z-10 w-64">
-              <p className="text-xs text-gray-500 mb-3 font-medium">Choose your avatar:</p>
+            <div className="absolute top-0 left-28 bg-slate-800 rounded-lg shadow-xl p-4 border border-slate-600 z-10 w-64">
+              <p className="text-xs text-gray-300 mb-3 font-medium">Choose your avatar:</p>
               
               {/* Upload Image Button */}
               <label className="block mb-3">
-                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg cursor-pointer hover:shadow-md transition-all text-sm font-medium">
+                <div className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg cursor-pointer hover:shadow-md transition-all text-sm font-medium">
                   📸 Upload Photo
                   <input
                     type="file"
@@ -251,8 +255,8 @@ const Profile: React.FC = () => {
                 <p className="text-xs text-gray-400 mt-1 text-center">Auto-resized to 200x200px</p>
               </label>
 
-              <div className="border-t border-gray-200 pt-3 mb-2">
-                <p className="text-xs text-gray-500 mb-2">Or pick an emoji:</p>
+              <div className="border-t border-slate-600 pt-3 mb-2">
+                <p className="text-xs text-gray-300 mb-2">Or pick an emoji:</p>
               </div>
               
               {/* Emoji Grid */}
@@ -261,7 +265,7 @@ const Profile: React.FC = () => {
                   <button
                     key={emoji}
                     onClick={() => { setAvatarUrl(emoji); setShowEmojiPicker(false); }}
-                    className="text-2xl hover:scale-125 transition-transform p-1 hover:bg-gray-50 rounded"
+                    className="text-2xl hover:scale-125 transition-transform p-1 hover:bg-slate-700 rounded"
                   >
                     {emoji}
                   </button>
@@ -278,12 +282,12 @@ const Profile: React.FC = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-3xl font-bold text-gray-900 bg-transparent border-b-2 border-primary focus:outline-none w-full mb-2"
+              className="text-3xl font-bold text-white bg-transparent border-b-2 border-indigo-500 focus:outline-none w-full mb-2"
               disabled={loading}
               placeholder="Your name"
             />
           ) : (
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">{user?.name}</h2>
+            <h2 className="text-3xl font-bold text-white mb-2">{user?.name}</h2>
           )}
           <div className="flex items-center gap-2 mb-3">
             <span className={`inline-flex items-center px-3 py-1 text-sm font-medium rounded-full ${
@@ -294,12 +298,12 @@ const Profile: React.FC = () => {
               {user?.role === 'ADMIN' ? '👑 Admin' : '✨ Employee'}
             </span>
             {timeWithCompany && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-300">
                 📅 {timeWithCompany} with us
               </span>
             )}
           </div>
-          <p className="text-gray-600 flex items-center gap-1">
+          <p className="text-gray-300 flex items-center gap-1">
             📧 {user?.email}
           </p>
         </div>
@@ -307,38 +311,57 @@ const Profile: React.FC = () => {
 
       {/* Edit Fields */}
       {isEditing && (
-        <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="space-y-4 mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               📆 Hire Date (optional)
             </label>
             <input
               type="date"
               value={hireDate}
               onChange={(e) => setHireDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 mt-1">When did you join the company?</p>
+            <p className="text-xs text-gray-400 mt-1">When did you join the company?</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              💰 Billable Rate (optional)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-400">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={billableRate}
+                onChange={(e) => setBillableRate(e.target.value)}
+                className="w-full pl-7 pr-3 py-2 bg-slate-700 border border-slate-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                disabled={loading}
+                placeholder="75.00"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Your hourly consulting rate (used for financial reports)</p>
           </div>
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200">
+      <div className="flex gap-3 pt-4 border-t border-slate-600">
         {isEditing ? (
           <>
             <button
               onClick={handleSave}
               disabled={loading || !name.trim()}
-              className="px-6 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {loading ? '🔄 Saving...' : '✔️ Save Changes'}
             </button>
             <button
               onClick={handleCancel}
               disabled={loading}
-              className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 font-medium"
+              className="px-6 py-2.5 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-colors disabled:opacity-50 font-medium"
             >
               ❌ Cancel
             </button>
@@ -346,7 +369,7 @@ const Profile: React.FC = () => {
         ) : (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-6 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
+            className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
           >
             ✏️ Edit Profile
           </button>

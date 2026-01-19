@@ -18,8 +18,10 @@ const ClientProjectManagement: React.FC = () => {
   // Project form state
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectClient, setNewProjectClient] = useState('');
+  const [newProjectBillingRate, setNewProjectBillingRate] = useState('');
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectBillingRate, setEditProjectBillingRate] = useState('');
 
   useEffect(() => {
     loadClients();
@@ -133,10 +135,11 @@ const ClientProjectManagement: React.FC = () => {
     }
 
     try {
-      await projectsAPI.create(newProjectName, newProjectClient);
+      await projectsAPI.create(newProjectName, newProjectClient, newProjectBillingRate ? parseFloat(newProjectBillingRate) : undefined);
       setSuccess('Project created successfully');
       setNewProjectName('');
       setNewProjectClient('');
+      setNewProjectBillingRate('');
       loadProjects();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
@@ -154,10 +157,14 @@ const ClientProjectManagement: React.FC = () => {
     }
 
     try {
-      await projectsAPI.update(id, { name: editProjectName });
+      await projectsAPI.update(id, { 
+        name: editProjectName,
+        billingRate: editProjectBillingRate ? parseFloat(editProjectBillingRate) : undefined 
+      });
       setSuccess('Project updated successfully');
       setEditingProject(null);
       setEditProjectName('');
+      setEditProjectBillingRate('');
       loadProjects();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
@@ -253,22 +260,34 @@ const ClientProjectManagement: React.FC = () => {
       )}
 
       {/* View Toggle */}
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           onClick={() => setView('clients')}
-          className={`px-4 py-2 rounded ${view === 'clients' ? 'bg-primary text-white' : 'bg-white border'}`}
+          className={`px-5 py-2.5 rounded-xl font-medium transition-all ${
+            view === 'clients'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+              : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'
+          }`}
         >
           Clients ({clients.length})
         </button>
         <button
           onClick={() => setView('projects')}
-          className={`px-4 py-2 rounded ${view === 'projects' ? 'bg-primary text-white' : 'bg-white border'}`}
+          className={`px-5 py-2.5 rounded-xl font-medium transition-all ${
+            view === 'projects'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+              : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'
+          }`}
         >
           Projects ({projects.length})
         </button>
         <button
           onClick={() => setView('assignments')}
-          className={`px-4 py-2 rounded ${view === 'assignments' ? 'bg-primary text-white' : 'bg-white border'}`}
+          className={`px-5 py-2.5 rounded-xl font-medium transition-all ${
+            view === 'assignments'
+              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
+              : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'
+          }`}
         >
           User Assignments ({users.length})
         </button>
@@ -305,9 +324,13 @@ const ClientProjectManagement: React.FC = () => {
             ) : clients.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No clients yet. Add your first client above!</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {clients.map((client) => (
-                  <div key={client.id} className="border p-4 rounded">
+                  <div key={client.id} className="border border-slate-600 bg-slate-700/30 p-4 rounded-lg flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1.5">
+                      <div className="w-2 h-2 rounded-full bg-indigo-400"></div>
+                    </div>
+                    <div className="flex-1">
                     {editingClient === client.id ? (
                       <div className="flex gap-2">
                         <input
@@ -318,7 +341,7 @@ const ClientProjectManagement: React.FC = () => {
                         />
                         <button
                           onClick={() => updateClient(client.id)}
-                          className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-blue-700"
+                          className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all"
                         >
                           Save
                         </button>
@@ -327,7 +350,7 @@ const ClientProjectManagement: React.FC = () => {
                             setEditingClient(null);
                             setEditClientName('');
                           }}
-                          className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
+                          className="px-3 py-1 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-500 transition-colors"
                         >
                           Cancel
                         </button>
@@ -346,19 +369,20 @@ const ClientProjectManagement: React.FC = () => {
                               setEditingClient(client.id);
                               setEditClientName(client.name);
                             }}
-                            className="text-sm text-blue-600 hover:text-blue-700 px-2 py-1"
+                            className="text-sm text-indigo-400 hover:text-indigo-300 px-3 py-1 rounded-lg hover:bg-indigo-500/10 transition-all"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => deleteClient(client.id, client.name)}
-                            className="text-sm text-red-600 hover:text-red-700 px-2 py-1"
+                            className="text-sm text-red-400 hover:text-red-300 px-3 py-1 rounded-lg hover:bg-red-500/10 transition-all"
                           >
                             Deactivate
                           </button>
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -394,6 +418,18 @@ const ClientProjectManagement: React.FC = () => {
                   onChange={(e) => setNewProjectName(e.target.value)}
                   className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
                 />
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2 text-gray-400">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Billing rate/hr (optional)"
+                    value={newProjectBillingRate}
+                    onChange={(e) => setNewProjectBillingRate(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-700"
@@ -412,32 +448,54 @@ const ClientProjectManagement: React.FC = () => {
             ) : projects.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No projects yet. Add your first project above!</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {projects.map((project) => (
-                  <div key={project.id} className="border p-4 rounded">
+                  <div key={project.id} className="border border-slate-600 bg-slate-700/30 p-4 rounded-lg flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1.5">
+                      <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                    </div>
+                    <div className="flex-1">
                     {editingProject === project.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={editProjectName}
-                          onChange={(e) => setEditProjectName(e.target.value)}
-                          className="flex-1 px-3 py-2 border rounded"
-                        />
-                        <button
-                          onClick={() => updateProject(project.id)}
-                          className="px-3 py-1 bg-primary text-white text-sm rounded hover:bg-blue-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => {
-                            setEditingProject(null);
-                            setEditProjectName('');
-                          }}
-                          className="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
-                        >
-                          Cancel
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={editProjectName}
+                            onChange={(e) => setEditProjectName(e.target.value)}
+                            className="flex-1 px-3 py-2 border rounded"
+                            placeholder="Project name"
+                          />
+                          <div className="relative w-40">
+                            <span className="absolute left-3 top-2 text-gray-400">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editProjectBillingRate}
+                              onChange={(e) => setEditProjectBillingRate(e.target.value)}
+                              className="w-full pl-7 pr-3 py-2 border rounded"
+                              placeholder="Rate/hr"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateProject(project.id)}
+                            className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-500 hover:to-purple-500 transition-all"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingProject(null);
+                              setEditProjectName('');
+                              setEditProjectBillingRate('');
+                            }}
+                            className="px-3 py-1 bg-slate-600 text-white text-sm rounded-lg hover:bg-slate-500 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex justify-between items-center">
@@ -445,6 +503,7 @@ const ClientProjectManagement: React.FC = () => {
                           <p className="font-medium">{project.name}</p>
                           <p className="text-sm text-gray-600">
                             Client: {project.client.name} · {project._count?.timeEntries || 0} time entries
+                            {project.billingRate && ` · $${project.billingRate.toFixed(2)}/hr`}
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -452,20 +511,22 @@ const ClientProjectManagement: React.FC = () => {
                             onClick={() => {
                               setEditingProject(project.id);
                               setEditProjectName(project.name);
+                              setEditProjectBillingRate(project.billingRate ? project.billingRate.toString() : '');
                             }}
-                            className="text-sm text-blue-600 hover:text-blue-700 px-2 py-1"
+                            className="text-sm text-indigo-400 hover:text-indigo-300 px-3 py-1 rounded-lg hover:bg-indigo-500/10 transition-all"
                           >
                             Edit
                           </button>
                           <button
                             onClick={() => deleteProject(project.id, project.name)}
-                            className="text-sm text-red-600 hover:text-red-700 px-2 py-1"
+                            className="text-sm text-red-400 hover:text-red-300 px-3 py-1 rounded-lg hover:bg-red-500/10 transition-all"
                           >
                             Deactivate
                           </button>
                         </div>
                       </div>
                     )}
+                    </div>
                   </div>
                 ))}
               </div>

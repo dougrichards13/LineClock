@@ -29,7 +29,6 @@ router.get('/client/:clientId', authMiddleware, async (req: AuthRequest, res: Re
         where: { userId },
         include: {
           project: {
-            where: { clientId, isActive: true },
             include: {
               client: {
                 select: { id: true, name: true },
@@ -38,7 +37,7 @@ router.get('/client/:clientId', authMiddleware, async (req: AuthRequest, res: Re
           },
         },
       });
-      projects = assignments.map(a => a.project).filter(p => p !== null && p.clientId === clientId);
+      projects = assignments.map(a => a.project).filter(p => p !== null && p.clientId === clientId && p.isActive);
     }
 
     res.json({ success: true, data: projects });
@@ -74,7 +73,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 // Create project (admin only)
 router.post('/', authMiddleware, adminOnly, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, clientId } = req.body;
+    const { name, clientId, billingRate } = req.body;
 
     if (!name || !name.trim()) {
       res.status(400).json({ success: false, error: 'Project name is required' });
@@ -97,6 +96,7 @@ router.post('/', authMiddleware, adminOnly, async (req: AuthRequest, res: Respon
       data: {
         name: name.trim(),
         clientId,
+        billingRate: billingRate ? parseFloat(billingRate) : null,
       },
       include: {
         client: {
@@ -120,11 +120,12 @@ router.post('/', authMiddleware, adminOnly, async (req: AuthRequest, res: Respon
 router.put('/:id', authMiddleware, adminOnly, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, isActive } = req.body;
+    const { name, isActive, billingRate } = req.body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (billingRate !== undefined) updateData.billingRate = billingRate ? parseFloat(billingRate) : null;
 
     const project = await prisma.project.update({
       where: { id },

@@ -70,21 +70,89 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       return;
     }
 
+    // Fetch user's billable rate and project's billing rate
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { billableRate: true },
+    });
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { billingRate: true },
+    });
+
+    const hours = parseFloat(hoursWorked);
+    const consultantRate = user?.billableRate || 0;
+    const clientRate = project?.billingRate || 0;
+    const consultantAmount = hours * consultantRate;
+    const clientAmount = hours * clientRate;
+
+    // Find active FIP assignments for this consultant
+    const fipAssignments = await prisma.fractionalIncentive.findMany({
+      where: {
+        consultantId: userId,
+        isActive: true,
+        startDate: { lte: new Date(date) },
+        AND: [
+          {
+            OR: [
+              { endDate: null },
+              { endDate: { gte: new Date(date) } },
+            ],
+          },
+          {
+            OR: [
+              { projectId: null }, // Global FIP (applies to all projects)
+              { projectId: projectId }, // Project-specific FIP
+            ],
+          },
+        ],
+      },
+    });
+
+    // Calculate total FIP amounts
+    const totalFipAmount = fipAssignments.reduce(
+      (sum, fip) => sum + (hours * fip.incentiveRate),
+      0
+    );
+
+    // Calculate Smart Factory margin
+    const smartFactoryMargin = clientAmount - consultantAmount - totalFipAmount;
+
+    // Create time entry with financial data
     const entry = await prisma.timeEntry.create({
       data: {
         userId,
         clientId,
         projectId,
         date: new Date(date),
-        hoursWorked: parseFloat(hoursWorked),
+        hoursWorked: hours,
         description: description || null,
         status: 'DRAFT',
+        consultantRate,
+        clientRate,
+        consultantAmount,
+        clientAmount,
+        smartFactoryMargin,
       },
       include: {
         client: { select: { id: true, name: true } },
         project: { select: { id: true, name: true } },
       },
     });
+
+    // Create IncentiveEarning records for each FIP assignment
+    if (fipAssignments.length > 0) {
+      await prisma.incentiveEarning.createMany({
+        data: fipAssignments.map(fip => ({
+          timeEntryId: entry.id,
+          fractionalIncentiveId: fip.id,
+          leaderId: fip.leaderId,
+          incentiveRate: fip.incentiveRate,
+          incentiveAmount: hours * fip.incentiveRate,
+        })),
+      });
+    }
 
     res.status(201).json({ success: true, data: entry });
   } catch (error) {
@@ -125,6 +193,81 @@ router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (status) updateData.status = status;
     if (clientId) updateData.clientId = clientId;
     if (projectId) updateData.projectId = projectId;
+
+    // If hours, client, or project changed, recalculate financial data
+    if (hoursWorked || clientId || projectId) {
+      const hours = hoursWorked ? parseFloat(hoursWorked) : existing.hoursWorked;
+      const finalProjectId = projectId || existing.projectId;
+
+      // Fetch user's billable rate and project's billing rate
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { billableRate: true },
+      });
+
+      const project = await prisma.project.findUnique({
+        where: { id: finalProjectId },
+        select: { billingRate: true },
+      });
+
+      const consultantRate = user?.billableRate || 0;
+      const clientRate = project?.billingRate || 0;
+      const consultantAmount = hours * consultantRate;
+      const clientAmount = hours * clientRate;
+
+      // Find active FIP assignments
+      const fipAssignments = await prisma.fractionalIncentive.findMany({
+        where: {
+          consultantId: userId,
+          isActive: true,
+          startDate: { lte: updateData.date || existing.date },
+          AND: [
+            {
+              OR: [
+                { endDate: null },
+                { endDate: { gte: updateData.date || existing.date } },
+              ],
+            },
+            {
+              OR: [
+                { projectId: null },
+                { projectId: finalProjectId },
+              ],
+            },
+          ],
+        },
+      });
+
+      const totalFipAmount = fipAssignments.reduce(
+        (sum, fip) => sum + (hours * fip.incentiveRate),
+        0
+      );
+
+      const smartFactoryMargin = clientAmount - consultantAmount - totalFipAmount;
+
+      updateData.consultantRate = consultantRate;
+      updateData.clientRate = clientRate;
+      updateData.consultantAmount = consultantAmount;
+      updateData.clientAmount = clientAmount;
+      updateData.smartFactoryMargin = smartFactoryMargin;
+
+      // Delete old FIP earnings and recreate
+      await prisma.incentiveEarning.deleteMany({
+        where: { timeEntryId: id },
+      });
+
+      if (fipAssignments.length > 0) {
+        await prisma.incentiveEarning.createMany({
+          data: fipAssignments.map(fip => ({
+            timeEntryId: id,
+            fractionalIncentiveId: fip.id,
+            leaderId: fip.leaderId,
+            incentiveRate: fip.incentiveRate,
+            incentiveAmount: hours * fip.incentiveRate,
+          })),
+        });
+      }
+    }
 
     const entry = await prisma.timeEntry.update({
       where: { id },

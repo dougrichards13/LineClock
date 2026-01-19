@@ -233,7 +233,7 @@ router.get('/entra/users', async (req: Request, res: Response) => {
 
     // Get existing users from database
     const dbUsers = await prisma.user.findMany({
-      select: { id: true, email: true, name: true, role: true, entraId: true, isHidden: true },
+      select: { id: true, email: true, name: true, role: true, entraId: true, isHidden: true, billableRate: true },
     });
 
     // Merge Entra ID users with DB users
@@ -245,6 +245,7 @@ router.get('/entra/users', async (req: Request, res: Response) => {
         userId: dbUser?.id,
         role: dbUser?.role || 'EMPLOYEE', // Default if not in DB
         isHidden: dbUser?.isHidden || false,
+        billableRate: dbUser?.billableRate || null,
       };
     });
 
@@ -483,6 +484,7 @@ router.get('/profile', async (req: Request, res: Response) => {
         role: true,
         avatarUrl: true,
         hireDate: true,
+        billableRate: true,
         createdAt: true,
       },
     });
@@ -524,7 +526,7 @@ router.patch('/profile', async (req: Request, res: Response) => {
     const { verifyToken } = require('../utils/jwt');
     const payload = verifyToken(token);
 
-    const { name, avatarUrl, hireDate } = req.body;
+    const { name, avatarUrl, hireDate, billableRate } = req.body;
 
     if (!name || name.trim() === '') {
       res.status(400).json({
@@ -537,6 +539,7 @@ router.patch('/profile', async (req: Request, res: Response) => {
     const updateData: any = { name: name.trim() };
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
     if (hireDate !== undefined) updateData.hireDate = hireDate ? new Date(hireDate) : null;
+    if (billableRate !== undefined) updateData.billableRate = billableRate ? parseFloat(billableRate) : null;
 
     const updatedUser = await prisma.user.update({
       where: { id: payload.userId },
@@ -547,6 +550,7 @@ router.patch('/profile', async (req: Request, res: Response) => {
         name: true,
         role: true,
         avatarUrl: true,
+        billableRate: true,
         hireDate: true,
       },
     });
