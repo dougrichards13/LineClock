@@ -568,4 +568,186 @@ router.patch('/profile', async (req: Request, res: Response) => {
   }
 });
 
+// Admin: Get org chart structure
+router.get('/users/org-chart', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ success: false, error: 'No token provided' });
+      return;
+    }
+
+    const token = authHeader.substring(7);
+    const { verifyToken } = require('../utils/jwt');
+    const payload = verifyToken(token);
+
+    // Check if user is admin
+    const adminUser = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      res.status(403).json({ success: false, error: 'Admin access required' });
+      return;
+    }
+
+    // Get all non-hidden users with their reporting relationships
+    const users = await prisma.user.findMany({
+      where: { isHidden: false },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        reportsToId: true,
+        reportsTo: {
+          select: { id: true, name: true, email: true }
+        },
+        directReports: {
+          where: { isHidden: false },
+          select: { id: true, name: true, email: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json({ success: true, data: { users } });
+  } catch (error) {
+    console.error('Org chart fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch org chart' });
+  }
+});
+
+// Admin: Update user's reporting manager
+router.patch('/users/:userId/reports-to', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({ success: false, error: 'No token provided' });
+      return;
+    }
+
+    const token = authHeader.substring(7);
+    const { verifyToken } = require('../utils/jwt');
+    const payload = verifyToken(token);
+
+    // Check if user is admin
+    const adminUser = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!adminUser || adminUser.role !== 'ADMIN') {
+      res.status(403).json({ success: false, error: 'Admin access required' });
+      return;
+    }
+
+    const { userId } = req.params;
+    const { reportsToId } = req.body;
+
+    console.log('Reports-to update request:', { userId, reportsToId });
+
+    // Prevent circular reporting (user can't report to themselves)
+    if (reportsToId === userId) {
+      res.status(400).json({ success: false, error: 'User cannot report to themselves' });
+      return;
+    }
+
+    // If setting a manager, verify the manager exists and isn't creating a cycle
+    if (reportsToId) {
+      const manager = await prisma.user.findUnique({ where: { id: reportsToId } });
+      if (!manager) {
+        res.status(404).json({ success: false, error: 'Manager not found' });
+        return;
+      }
+
+      // Check for circular reporting (walk up the chain)
+      let currentManagerId = manager.reportsToId;
+      while (currentManagerId) {
+        if (currentManagerId === userId) {
+          res.status(400).json({ success: false, error: 'This would create a circular reporting relationship' });
+          return;
+        }
+        const currentManager = await prisma.user.findUnique({ where: { id: currentManagerId } });
+        currentManagerId = currentManager?.reportsToId || null;
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { reportsToId: reportsToId || null },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        reportsToId: true,
+        reportsTo: {
+          select: { id: true, name: true, email: true }
+        }
+      }
+    });
+
+    res.json({ success: true, data: { user: updatedUser } });
+  } catch (error: any) {
+    console.error('Reports-to update error:', error);
+    console.error('Error details:', { message: error.message, code: error.code, meta: error.meta });
+    res.status(500).json({ success: false, error: 'Failed to update reporting structure' });
+  }
+});
+
+// TEST ONLY: Direct employee login (bypass Entra ID for testing)
+// This endpoint should be disabled in production
+router.post('/test-employee-login', async (req: Request, res: Response) => {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({
+        success: false,
+        error: 'Test login is disabled in production',
+      });
+      return;
+    }
+
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        success: false,
+        error: 'Email is required',
+      });
+      return;
+    }
+
+    // Find user by email
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        error: 'User not found. Please check the email address.',
+      });
+      return;
+    }
+
+    // Generate JWT token
+    const token = generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Test login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process test login',
+    });
+  }
+});
+
 export default router;

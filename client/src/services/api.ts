@@ -22,6 +22,7 @@ api.interceptors.request.use((config) => {
 export const authAPI = {
   getAuthUrl: () => api.get('/auth/login'),
   handleCallback: (code: string) => api.post('/auth/callback', { code }),
+  testEmployeeLogin: (email: string) => api.post('/auth/test-employee-login', { email }),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data: { name: string; avatarUrl?: string; hireDate?: string; billableRate?: number }) => 
     api.patch('/auth/profile', data),
@@ -108,6 +109,28 @@ export const assignmentsAPI = {
     api.post('/assignments/assign-project', { userId, projectId }),
   removeProject: (userId: string, projectId: string) =>
     api.delete(`/assignments/assign-project/${userId}/${projectId}`),
+};
+
+// Time Modification Requests
+export const modificationRequestsAPI = {
+  getAll: () => api.get('/modification-requests'),
+  getPending: () => api.get('/modification-requests/pending'),
+  create: (data: {
+    weekStartDate: string;
+    clientId: string;
+    projectId: string;
+    entries: Array<{ date: string; hours: number; description?: string }>;
+    reason: string;
+  }) => api.post('/modification-requests', data),
+  review: (id: string, status: string, reviewNotes?: string) =>
+    api.patch(`/modification-requests/${id}/review`, { status, reviewNotes }),
+};
+
+// Org Chart
+export const orgChartAPI = {
+  getOrgChart: () => api.get('/auth/users/org-chart'),
+  updateReportsTo: (userId: string, reportsToId: string | null) =>
+    api.patch(`/auth/users/${userId}/reports-to`, { reportsToId }),
 };
 
 export default api;

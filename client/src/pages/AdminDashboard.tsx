@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../utils/AuthContext';
-import { dashboardAPI, timeEntriesAPI, vacationsAPI, questionsAPI, clientsAPI, projectsAPI } from '../services/api';
+import { dashboardAPI, timeEntriesAPI, vacationsAPI, questionsAPI, clientsAPI, projectsAPI, modificationRequestsAPI } from '../services/api';
 import Profile from '../components/Profile';
 import ClientProjectManagement from '../components/ClientProjectManagement';
 import UserManagement from '../components/UserManagement';
 import Invoicing from '../components/Invoicing';
 import FIPManagement from '../components/FIPManagement';
 import FinancialReports from '../components/FinancialReports';
+import OrgStructure from '../components/OrgStructure';
+import TimeEntriesAdmin from '../components/TimeEntriesAdmin';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Footer from '../components/Footer';
 import LiveClock from '../components/LiveClock';
@@ -14,7 +16,7 @@ import LiveClock from '../components/LiveClock';
 const AdminDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'vacation' | 'clients' | 'users' | 'mytime' | 'invoicing' | 'fip' | 'reports' | 'profile'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'time' | 'vacation' | 'clients' | 'users' | 'mytime' | 'invoicing' | 'fip' | 'reports' | 'org' | 'profile'>('overview');
   const [pendingTime, setPendingTime] = useState<any[]>([]);
   const [pendingVacations, setPendingVacations] = useState<any[]>([]);
   const [openQuestions, setOpenQuestions] = useState<any[]>([]);
@@ -30,9 +32,13 @@ const AdminDashboard: React.FC = () => {
   const [timeForm, setTimeForm] = useState({ date: '', hoursWorked: '', clientId: '', projectId: '', description: '' });
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ date: '', hoursWorked: '', clientId: '', projectId: '', description: '' });
+  
+  // Pending counts for badge
+  const [pendingModRequestsCount, setPendingModRequestsCount] = useState(0);
 
   useEffect(() => {
     loadStats();
+    loadPendingCounts();
   }, []);
 
   useEffect(() => {
@@ -45,6 +51,15 @@ const AdminDashboard: React.FC = () => {
       setStats(res.data.data);
     } catch (err) {
       console.error('Stats error:', err);
+    }
+  };
+
+  const loadPendingCounts = async () => {
+    try {
+      const res = await modificationRequestsAPI.getPending();
+      setPendingModRequestsCount(res.data.data?.length || 0);
+    } catch (err) {
+      console.error('Pending counts error:', err);
     }
   };
 
@@ -449,13 +464,21 @@ const AdminDashboard: React.FC = () => {
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
           <div className="flex gap-3 mb-8 flex-wrap">
             <button onClick={() => setActiveTab('overview')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'overview' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Overview</button>
-            <button onClick={() => setActiveTab('time')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'time' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Time Entries</button>
+            <button onClick={() => setActiveTab('time')} className={`px-5 py-2.5 rounded-xl font-medium transition-all relative ${activeTab === 'time' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>
+              Time Entries
+              {(stats?.pendingTimeEntries > 0 || pendingModRequestsCount > 0) && (
+                <span className="absolute -top-2 -right-2 min-w-5 h-5 flex items-center justify-center text-xs font-bold bg-red-500 text-white rounded-full px-1.5">
+                  {(stats?.pendingTimeEntries || 0) + pendingModRequestsCount}
+                </span>
+              )}
+            </button>
             <button onClick={() => setActiveTab('vacation')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'vacation' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Vacations</button>
             <button onClick={() => setActiveTab('clients')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'clients' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Clients & Projects</button>
             <button onClick={() => setActiveTab('users')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'users' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Users</button>
             <button onClick={() => setActiveTab('invoicing')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'invoicing' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Invoicing</button>
             <button onClick={() => setActiveTab('fip')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'fip' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>FIP</button>
             <button onClick={() => setActiveTab('reports')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'reports' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Reports</button>
+            <button onClick={() => setActiveTab('org')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'org' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Org Structure</button>
             <button onClick={() => setActiveTab('mytime')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'mytime' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>My Time</button>
             <button onClick={() => setActiveTab('profile')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'profile' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Profile</button>
           </div>
@@ -505,41 +528,7 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'time' && (
-            <div className="space-y-4">
-              {error && (
-                <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg backdrop-blur">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="bg-emerald-900/50 border border-emerald-700 text-emerald-200 px-4 py-3 rounded-lg backdrop-blur">
-                  {success}
-                </div>
-              )}
-              <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
-                <h2 className="text-lg font-semibold mb-4 text-white">Pending Time Entries</h2>
-                {loading ? <p className="text-gray-400">Loading...</p> : (
-                  <div className="space-y-3">
-                    {pendingTime.map((entry) => (
-                      <div key={entry.id} className="border border-slate-600 bg-slate-700/50 p-4 rounded-lg">
-                        <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-white">{entry.user.name} - {entry.user.email}</p>
-                          <p className="text-sm text-gray-400">{new Date(entry.date).toLocaleDateString()} - {entry.hoursWorked} hours</p>
-                          <p className="text-sm text-gray-300"><span className="font-medium">{entry.client?.name}</span> / {entry.project?.name}{entry.description && ` - ${entry.description}`}</p>
-                        </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => reviewTimeEntry(entry.id, 'APPROVED')} className="px-3 py-1 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors">Approve</button>
-                            <button onClick={() => reviewTimeEntry(entry.id, 'REJECTED')} className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors">Reject</button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {pendingTime.length === 0 && <p className="text-gray-400 text-center py-8">No pending time entries</p>}
-                  </div>
-                )}
-              </div>
-            </div>
+            <TimeEntriesAdmin onCountChange={() => { loadStats(); loadPendingCounts(); }} />
           )}
 
           {activeTab === 'vacation' && (
@@ -645,6 +634,8 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'fip' && <FIPManagement />}
 
           {activeTab === 'reports' && <FinancialReports />}
+
+          {activeTab === 'org' && <OrgStructure />}
 
           {activeTab === 'mytime' && (
             <div className="space-y-6">

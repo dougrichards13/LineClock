@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import mongoSanitize from 'express-mongo-sanitize';
 import authRoutes from './routes/auth';
 import timeEntriesRoutes from './routes/timeEntries';
 import vacationsRoutes from './routes/vacations';
@@ -18,6 +17,7 @@ import templatesRoutes from './routes/templates';
 import overtimeRoutes from './routes/overtime';
 import fractionalIncentivesRoutes from './routes/fractionalIncentives';
 import financialReportsRoutes from './routes/financialReports';
+import modificationRequestsRoutes from './routes/modificationRequests';
 import prisma from './utils/prisma';
 
 dotenv.config();
@@ -76,9 +76,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Sanitize data to prevent MongoDB injection (also helps with other NoSQL)
-app.use(mongoSanitize());
-
 // Force HTTPS in production
 if (isProduction) {
   app.use((req, res, next) => {
@@ -127,6 +124,7 @@ app.use('/api/templates', templatesRoutes);
 app.use('/api/overtime', overtimeRoutes);
 app.use('/api/fractional-incentives', fractionalIncentivesRoutes);
 app.use('/api/financial-reports', financialReportsRoutes);
+app.use('/api/modification-requests', modificationRequestsRoutes);
 
 // 404 handler for undefined routes
 app.use((req, res) => {

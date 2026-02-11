@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../utils/AuthContext';
 import { timeEntriesAPI, vacationsAPI, questionsAPI, clientsAPI, projectsAPI } from '../services/api';
 import Profile from '../components/Profile';
+import AnimatedBackground from '../components/AnimatedBackground';
+import Footer from '../components/Footer';
+import LiveClock from '../components/LiveClock';
+import WeeklyTimeEntry from '../components/WeeklyTimeEntry';
 
 const EmployeeDashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -200,111 +204,83 @@ const EmployeeDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+    <div className="min-h-screen bg-slate-900 flex flex-col">
+      <AnimatedBackground />
+      
+      <nav className="bg-slate-800 shadow-lg border-b border-slate-700 relative z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-primary">Smart Factory - Employee Portal</h1>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <LiveClock className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-white tracking-tight">LineClock™</h1>
+              <p className="text-xs text-gray-400">Employee Portal</p>
+            </div>
+          </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Welcome, {user?.name}</span>
-            <button onClick={logout} className="text-sm text-red-600 hover:text-red-700">Logout</button>
+            <span className="text-sm text-gray-300 font-medium">Welcome, {user?.name}</span>
+            <button onClick={logout} className="text-sm bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-600 transition-all font-medium border border-slate-600">
+              Logout
+            </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setActiveTab('time')} className={`px-4 py-2 rounded ${activeTab === 'time' ? 'bg-primary text-white' : 'bg-white'}`}>Time Entries</button>
-          <button onClick={() => setActiveTab('vacation')} className={`px-4 py-2 rounded ${activeTab === 'vacation' ? 'bg-primary text-white' : 'bg-white'}`}>Vacation Requests</button>
-          <button onClick={() => setActiveTab('questions')} className={`px-4 py-2 rounded ${activeTab === 'questions' ? 'bg-primary text-white' : 'bg-white'}`}>Questions</button>
-          <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded ${activeTab === 'profile' ? 'bg-primary text-white' : 'bg-white'}`}>Profile</button>
+      <div className="flex-1 relative">
+        {/* Three-column opacity effect */}
+        <div className="absolute inset-0 flex pointer-events-none">
+          {/* Left column - 100% opacity */}
+          <div className="w-1/6 bg-slate-900"></div>
+          {/* Center column - allows background to show through */}
+          <div className="flex-1"></div>
+          {/* Right column - 100% opacity */}
+          <div className="w-1/6 bg-slate-900"></div>
         </div>
+        
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
+          <div className="flex gap-3 mb-8 flex-wrap">
+            <button onClick={() => setActiveTab('time')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'time' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Time Entries</button>
+            <button onClick={() => setActiveTab('vacation')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'vacation' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Vacation Requests</button>
+            <button onClick={() => setActiveTab('questions')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'questions' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Questions</button>
+            <button onClick={() => setActiveTab('profile')} className={`px-5 py-2.5 rounded-xl font-medium transition-all ${activeTab === 'profile' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' : 'bg-slate-800/90 backdrop-blur text-white hover:bg-slate-700/90 border border-slate-600'}`}>Profile</button>
+          </div>
 
         {activeTab === 'time' && (
           <div className="space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              <div className="bg-red-900/30 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl">
                 {error}
               </div>
             )}
             {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+              <div className="bg-green-900/30 border border-green-500/50 text-green-200 px-4 py-3 rounded-xl">
                 {success}
               </div>
             )}
 
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">New Time Entry</h2>
-              <form onSubmit={submitTimeEntry} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Date *</label>
-                    <input type="date" required value={timeForm.date} onChange={(e) => setTimeForm({ ...timeForm, date: e.target.value })} className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Hours *</label>
-                    <input type="number" step="0.5" min="0.5" max="24" required placeholder="8.0" value={timeForm.hoursWorked} onChange={(e) => setTimeForm({ ...timeForm, hoursWorked: e.target.value })} className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Client *</label>
-                    <select
-                      required
-                      value={timeForm.clientId}
-                      onChange={(e) => {
-                        const clientId = e.target.value;
-                        setTimeForm({ ...timeForm, clientId, projectId: '' });
-                        if (clientId) loadProjectsForClient(clientId);
-                        else setProjects([]);
-                      }}
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                    >
-                      <option value="">Select Client...</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>{client.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Project *</label>
-                    <select
-                      required
-                      value={timeForm.projectId}
-                      onChange={(e) => setTimeForm({ ...timeForm, projectId: e.target.value })}
-                      disabled={!timeForm.clientId || projects.length === 0}
-                      className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-100"
-                    >
-                      <option value="">Select Project...</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>{project.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Task Notes (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="What did you work on?"
-                    value={timeForm.description}
-                    onChange={(e) => setTimeForm({ ...timeForm, description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">Add Entry</button>
-              </form>
-            </div>
+            <WeeklyTimeEntry
+              onSuccess={() => {
+                setSuccess('Time entries submitted successfully!');
+                loadData();
+                setTimeout(() => setSuccess(''), 3000);
+              }}
+              onError={(err) => {
+                setError(err);
+                setTimeout(() => setError(''), 5000);
+              }}
+            />
 
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">My Time Entries</h2>
+            <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
+              <h2 className="text-lg font-semibold mb-4 text-white">My Time Entries</h2>
               {loading ? (
-                <p className="text-gray-500">Loading...</p>
+                <p className="text-gray-300">Loading...</p>
               ) : timeEntries.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No time entries yet. Create your first one above!</p>
+                <p className="text-gray-300 text-center py-8">No time entries yet. Create your first one above!</p>
               ) : (
                 <div className="space-y-3">
                   {timeEntries.map((entry) => (
-                    <div key={entry.id} className="border p-4 rounded">
+                    <div key={entry.id} className="bg-slate-700/50 border border-slate-600 p-4 rounded-lg">
                       {editingEntry === entry.id ? (
                         <div className="space-y-3">
                           <div className="grid grid-cols-3 gap-3">
@@ -320,8 +296,8 @@ const EmployeeDashboard: React.FC = () => {
                       ) : (
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <p className="font-medium">{new Date(entry.date).toLocaleDateString()} - {entry.hoursWorked} hours</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="font-medium text-white">{new Date(entry.date).toLocaleDateString()} - {entry.hoursWorked} hours</p>
+                            <p className="text-sm text-gray-300">
                               <span className="font-medium">{entry.client?.name}</span> / {entry.project?.name}
                               {entry.description && ` - ${entry.description}`}
                             </p>
@@ -333,7 +309,7 @@ const EmployeeDashboard: React.FC = () => {
                                 'bg-yellow-100 text-yellow-800'
                               }`}>{entry.status}</span>
                               {entry.reviewer && (
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-400">
                                   Reviewed by {entry.reviewer.name} on {new Date(entry.reviewedAt).toLocaleDateString()}
                                 </span>
                               )}
@@ -342,9 +318,9 @@ const EmployeeDashboard: React.FC = () => {
                           <div className="flex gap-2">
                             {entry.status === 'DRAFT' && (
                               <>
-                                <button onClick={() => startEditEntry(entry)} className="text-sm text-blue-600 hover:text-blue-700 px-2 py-1">Edit</button>
-                                <button onClick={() => deleteEntry(entry.id)} className="text-sm text-red-600 hover:text-red-700 px-2 py-1">Delete</button>
-                                <button onClick={() => submitTimeForReview(entry.id)} className="text-sm bg-primary text-white px-3 py-1 rounded hover:bg-blue-700">Submit</button>
+                                <button onClick={() => startEditEntry(entry)} className="text-sm text-indigo-400 hover:text-indigo-300 px-2 py-1">Edit</button>
+                                <button onClick={() => deleteEntry(entry.id)} className="text-sm text-red-400 hover:text-red-300 px-2 py-1">Delete</button>
+                                <button onClick={() => submitTimeForReview(entry.id)} className="text-sm bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:from-indigo-500 hover:to-purple-500">Submit</button>
                               </>
                             )}
                           </div>
@@ -360,8 +336,8 @@ const EmployeeDashboard: React.FC = () => {
 
         {activeTab === 'vacation' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">New Vacation Request</h2>
+            <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
+              <h2 className="text-lg font-semibold mb-4 text-white">New Vacation Request</h2>
               <form onSubmit={submitVacation} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -378,8 +354,8 @@ const EmployeeDashboard: React.FC = () => {
               </form>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">My Vacation Requests</h2>
+            <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
+              <h2 className="text-lg font-semibold mb-4 text-white">My Vacation Requests</h2>
               {loading ? <p>Loading...</p> : (
                 <div className="space-y-2">
                   {vacations.map((vac) => (
@@ -397,16 +373,16 @@ const EmployeeDashboard: React.FC = () => {
 
         {activeTab === 'questions' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">Ask a Question</h2>
+            <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
+              <h2 className="text-lg font-semibold mb-4 text-white">Ask a Question</h2>
               <form onSubmit={submitQuestion} className="space-y-4">
                 <textarea required placeholder="Your question..." value={questionText} onChange={(e) => setQuestionText(e.target.value)} className="w-full px-3 py-2 border rounded" rows={4} />
                 <button type="submit" className="px-4 py-2 bg-primary text-white rounded hover:bg-blue-700">Submit Question</button>
               </form>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">My Questions</h2>
+            <div className="bg-slate-800/90 backdrop-blur p-6 rounded-xl shadow-md border border-slate-600">
+              <h2 className="text-lg font-semibold mb-4 text-white">My Questions</h2>
               {loading ? <p>Loading...</p> : (
                 <div className="space-y-4">
                   {questions.map((q) => (
@@ -432,7 +408,10 @@ const EmployeeDashboard: React.FC = () => {
         {activeTab === 'profile' && (
           <Profile />
         )}
+        </div>
       </div>
+      
+      <Footer />
     </div>
   );
 };
