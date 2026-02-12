@@ -156,8 +156,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Smart Factory Time Entry System server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(Number(PORT), HOST, () => {
+  console.log(`🚀 LineClock server running on ${HOST}:${PORT}`);
+  console.log(`📍 Environment: ${NODE_ENV}`);
+  console.log(`🔗 Health check: http://${HOST}:${PORT}/health`);
 });
