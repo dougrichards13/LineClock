@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../utils/AuthContext';
+import React, { useState } from 'react';
 import { authAPI } from '../services/api';
 import Footer from '../components/Footer';
 import LiveClock from '../components/LiveClock';
@@ -8,9 +6,6 @@ import LiveClock from '../components/LiveClock';
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [testEmail, setTestEmail] = useState('test.employee@smartfactory.com');
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogin = async () => {
     setError('');
@@ -22,21 +17,6 @@ const Login: React.FC = () => {
       window.location.href = authUrl;
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to initiate login');
-      setLoading(false);
-    }
-  };
-
-  const handleTestEmployeeLogin = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await authAPI.testEmployeeLogin(testEmail);
-      const { token, user } = response.data.data;
-      login(token, user);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to login as test employee');
       setLoading(false);
     }
   };
@@ -134,45 +114,6 @@ const Login: React.FC = () => {
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
             </svg>
             Secured by Microsoft Entra ID
-          </div>
-        </div>
-
-        {/* Test Employee Login Section (Development Only) */}
-        <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 p-8 space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-2xl font-bold text-white">Test Employee Login</h2>
-              <span className="px-2 py-1 bg-yellow-600/20 text-yellow-400 text-xs font-semibold rounded-full border border-yellow-600/30">DEV ONLY</span>
-            </div>
-            <p className="mt-1 text-sm text-gray-400">Login as a test employee to preview the employee view</p>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Employee Email</label>
-              <input
-                type="email"
-                value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                placeholder="test.employee@smartfactory.com"
-              />
-            </div>
-
-            <button
-              onClick={handleTestEmployeeLogin}
-              disabled={loading || !testEmail}
-              className="w-full group relative flex justify-center items-center gap-3 py-4 px-6 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 focus:ring-offset-slate-800 shadow-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              {loading ? 'Signing in...' : 'Login as Test Employee'}
-            </button>
-
-            <div className="text-xs text-gray-500 text-center">
-              This bypasses Entra ID authentication for testing purposes
-            </div>
           </div>
         </div>
 
