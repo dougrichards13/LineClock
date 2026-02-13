@@ -1,3 +1,28 @@
+## LineClock v1.0.0
+
+The first production-ready release of LineClock, a comprehensive time tracking and invoicing system for Smart Factory.
+
+### Features
+- **Time Entry**: Weekly view (Monday-Sunday) with easy hour logging
+- **Approval Workflows**: Admin review and approval of time entries
+- **Vacation Requests**: Submit and track PTO requests
+- **Client/Project Management**: Organize work by client and project
+- **User Management**: Microsoft Entra ID (Azure AD) SSO integration
+- **Org Chart**: Reporting structure for routing approvals to supervisors
+- **Modification Requests**: Request changes to past work weeks
+- **Bill.com Integration**: Generate and sync invoices
+- **Fractional Incentive Program (FIP)**: Track consultant incentive earnings
+- **Financial Reports**: Revenue and margin reporting
+
+### Technical Stack
+- Backend: Node.js, Express, TypeScript
+- Frontend: React, Vite, Tailwind CSS
+- Database: PostgreSQL (via Prisma ORM)
+- Authentication: Microsoft Entra ID (Azure AD)
+
+### Deployment
+See `.env.example` files in `server/` and `client/` for configuration.
+
 # LineClock™
 
 **Professional Time Tracking & Financial Management Platform**
